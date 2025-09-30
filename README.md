@@ -36,26 +36,26 @@ Welcome to Genie Weather, a smart, AI-powered weather forecast application that 
 
 To run this project locally, follow these steps:
 
-    Clone the repository:
+1. Clone the repository:
 ```bash
     git clone [https://github.com/claytoncrispim/genie-weather.git](https://github.com/claytoncrispim/genie-weather.git)
 ```
 ```bash    
     cd genie-weather
 ```
-    Install dependencies:
+2. Install dependencies:
 ```bash
     npm install
 ```
-    Set up your API Key:
+3. Set up your API Key:
 
-        Create a file named .env.local in the root of the project.
+- Create a file named `.env.local` in the root of the project.
 
-        Add your Gemini API key to this file:
+- Add your Gemini API key to this file:
 ```bash
     VITE_GEMINI_API_KEY=your_api_key_here
 ```
-    Run the development server:
+4. Run the development server:
 ```bash
     npm run dev
 ```
