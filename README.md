@@ -1,56 +1,61 @@
-Genie Weather 🧞‍♂️
+# Genie Weather 🧞‍♂️
+
+
+## 🚀 [<ins>Live Demo</ins>](https://claytoncrispim.github.io/genie-weather/) 🚀
 
 Welcome to Genie Weather, a smart, AI-powered weather forecast application that provides more than just data—it offers personalized advice and a dynamic, immersive experience.
 
-✨ Key Features
+## 📷 Screenshot
+![A screenshot of the Genie Weather application showing the main interface with the current and 5-days weather forecast, and recommendations.](assets/screenshot.png)
 
-    AI-Powered Forecasts: Utilizes the Google Gemini API to fetch real-time weather data and 5-day forecasts with natural language prompts.
+## ✨ Key Features
 
-    "True Genie" Recommendations: The AI analyzes the forecast to provide personalized advice on what to wear and suggests suitable indoor or outdoor activities.
+* **AI-Powered Forecasts:** Utilizes the Google Gemini API to fetch real-time weather data and 5-day forecasts with natural language prompts.
 
-    Automatic Geolocation: On first load, the app intelligently asks for your location to provide the weather for where you are, right now.
+* **"True Genie" Recommendations:** The AI analyzes the forecast to provide personalized advice on what to wear and suggests suitable indoor or outdoor activities.
 
-    Dynamic UI & Backgrounds: The entire app's background gradient changes to reflect the current weather conditions (e.g., a warm orange for "Sunny," a cool blue for "Rain").
+* **Automatic Geolocation:** On first load, the app intelligently asks for your location to provide the weather for where you are, right now.
 
-    Robust & Resilient: Built with professional error handling, rate-limiting cooldowns, and a polished loading state to ensure a smooth user experience.
+* **Dynamic UI & Backgrounds:** The entire app's background gradient changes to reflect the current weather conditions (e.g., a warm orange for "Sunny," a cool blue for "Rain").
 
-    Clean, Modern Tech Stack: Built with React, Vite, and Tailwind CSS, all structured into clean, reusable components.
+* **Robust & Resilient:** Built with professional error handling, rate-limiting cooldowns, and a polished loading state to ensure a smooth user experience.
 
-🛠️ Technologies Used
+* **Clean, Modern Tech Stack:** Built with React, Vite, and Tailwind CSS, all structured into clean, reusable components.
 
-    Frontend: React, Vite
+## 🛠️ Technologies Used
 
-    Styling: Tailwind CSS
+* **Frontend:** React, Vite
 
-    AI/API: Google Gemini API (for structured JSON generation)
+* **Styling:** Tailwind CSS
 
-    Browser APIs: Geolocation, Local Storage
+* **AI/API:** Google Gemini API (for structured JSON generation)
 
-🚀 Getting Started
+* **Browser APIs:** Geolocation, Local Storage
+
+## 🚀 Getting Started
 
 To run this project locally, follow these steps:
 
     Clone the repository:
-```sh
+```bash
     git clone [https://github.com/claytoncrispim/genie-weather.git](https://github.com/claytoncrispim/genie-weather.git)
 ```
-```sh
+```bash    
     cd genie-weather
 ```
     Install dependencies:
-```sh
+```bash
     npm install
 ```
-
     Set up your API Key:
 
         Create a file named .env.local in the root of the project.
 
         Add your Gemini API key to this file:
-```sh
+```bash
     VITE_GEMINI_API_KEY=your_api_key_here
 ```
     Run the development server:
-```sh
+```bash
     npm run dev
 ```
