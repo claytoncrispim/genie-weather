@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
-// A function to generate SVG icons for weather conditions.
-const getWeatherIcon = (condition, size = "h-24 w-24") => {
-  const icons = {
+// --- COMPONENT 1: WeatherIcon ---
+const WeatherIcon = ({ condition, size = "h-24 w-24" }) => {
+    const icons = {
     "Sunny": (
       <svg xmlns="http://www.w3.org/2000/svg" className={`${size} text-yellow-400`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
     ),
@@ -29,7 +29,101 @@ const getWeatherIcon = (condition, size = "h-24 w-24") => {
     )
   };
   return icons[condition] || icons["Default"];
-}
+};
+
+// --- COMPONENT 2: LoadingSpinner ---
+const LoadingSpinner = () => (
+  <div className="flex justify-center items-center p-8">
+    <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-white"></div>
+  </div>
+);
+
+// --- COMPONENT 3: SearchBar ---
+const SearchBar = ({ city, setCity, handleGetForecast, loading, isCooldown }) => (
+    <form onSubmit={(e) => { e.preventDefault(); handleGetForecast(city); }} className="flex gap-2">
+    <input
+      type="text"
+      value={city}
+      onChange={(e) => setCity(e.target.value)}
+      placeholder="Enter city name..."
+      className="flex-grow p-3 rounded-lg border-2 border-transparent focus:border-white focus:ring-0 bg-white/50 text-white placeholder-gray-200 transition duration-300 focus:outline-none"
+    />
+    <button
+      type="submit"
+      disabled={loading || isCooldown}
+      className="bg-white text-blue-500 font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-blue-100 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+    >
+      {loading ? 'Thinking...' : 'Get Forecast'}
+    </button>
+  </form>
+);
+
+// --- COMPONENT 4: CurrentWeather ---
+const CurrentWeather = ({ data }) => (
+  <div className="bg-white/30 backdrop-blur-md rounded-xl shadow-inner p-6 flex flex-col items-center text-white space-y-4">
+    <h2 className="text-3xl font-semibold">{data.city}</h2>
+    <div className="flex items-center gap-4">
+      <WeatherIcon condition={data.conditions} />
+      <p className="text-6xl font-bold">
+        {data.temperature}°{data.temperatureUnit === 'Celsius' ? 'C' : 'F'}
+      </p>
+    </div>
+    <p className="text-2xl capitalize">{data.conditions}</p>
+  </div>
+);
+
+// --- COMPONENT 5: DailyForecast ---
+const DailyForecast = ({ data }) => (
+  <div className="bg-white/30 backdrop-blur-md rounded-xl shadow-inner p-6 space-y-4">
+    <h3 className="text-2xl font-bold text-white text-center">5-Day Forecast</h3>
+    <div className="flex justify-between items-center text-white overflow-x-auto gap-2">
+      {data.map((day) => (
+        <div key={day.day} className="flex-shrink-0 flex flex-col items-center bg-white/20 p-3 rounded-lg w-24">
+          <p className="font-bold">{day.day.substring(0, 3)}</p>
+          <div className="my-2"><WeatherIcon condition={day.conditions} size="h-12 w-12" /></div>
+          <div className="text-center">
+            <p className="font-semibold">{day.high}°</p>
+            <p className="opacity-70">{day.low}°</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+// --- COMPONENT 6: Recommendations ---
+const Recommendations = ({ data }) => (
+    <div className="bg-white/30 backdrop-blur-md rounded-xl shadow-inner p-6 space-y-4 text-white">
+        <h3 className="text-2xl font-bold text-center">Genie's Advice</h3>
+        <div className="space-y-3">
+            <div>
+                <p className="font-semibold">💡 What to wear:</p>
+                <p>{data.clothingSuggestion}</p>
+            </div>
+            <div>
+                <p className="font-semibold">💡 Activity ideas:</p>
+                <p>{data.activitySuggestion}</p>
+            </div>
+        </div>
+    </div>
+);
+
+// --- DYNAMIC STYLING: Get background based on weather ---
+const getBackgroundStyle = (condition) => {
+    const defaultStyle = "from-blue-400 to-purple-600";
+    if (!condition) return defaultStyle;
+
+    const conditionMap = {
+        "Sunny": "from-sky-400 to-orange-300",
+        "Cloudy": "from-slate-400 to-gray-600",
+        "Partly Cloudy": "from-sky-500 to-slate-400",
+        "Rain": "from-slate-500 to-blue-800",
+        "Snow": "from-slate-300 to-cyan-200",
+        "Thunderstorm": "from-slate-800 to-indigo-900",
+        "Windy": "from-sky-300 to-gray-400",
+    };
+    return conditionMap[condition] || defaultStyle;
+};
 
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
@@ -38,28 +132,47 @@ const App = () => {
   const [forecast, setForecast] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [isCooldown, setIsCooldown] = useState(false);
 
-  const handleGetForecast = async (e) => {
-    e.preventDefault();
-
-    if (!apiKey) {
-      setError("API Key is missing. Please check your .env.local file.");
-      return;
+  useEffect(() => {
+    const lastCity = localStorage.getItem('genieWeatherLastCity');
+    if (lastCity) {
+        setCity(lastCity);
+    } else {
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                handleGetForecast({ latitude, longitude });
+            },
+            (err) => {
+                console.warn("User denied geolocation. Waiting for manual input.");
+            }
+        );
     }
-    if (!city) {
-      setError('Please enter a city name.');
-      return;
-    }
+  }, []);
 
+  useEffect(() => {
+    if (forecast?.currentWeather?.city) {
+      localStorage.setItem('genieWeatherLastCity', forecast.currentWeather.city);
+    }
+  }, [forecast]);
+
+  const handleGetForecast = async (location) => {
+    let prompt;
+    if (typeof location === 'string') {
+        prompt = `What is the current weather and 5-day forecast for ${location}? Also, provide a brief suggestion for clothing and one for an activity. Respond in a valid JSON format.`;
+    } else if (location.latitude && location.longitude) {
+        prompt = `What is the current weather and 5-day forecast for the location at latitude ${location.latitude} and longitude ${location.longitude}? Also, provide a brief suggestion for clothing and one for an activity. Respond in a valid JSON format.`;
+    } else {
+        setError('Invalid location provided.');
+        return;
+    }
+    
     setLoading(true);
+    setIsCooldown(true);
     setError(null);
     setForecast(null);
 
-    const prompt = `What is the current weather and the 5-day forecast for ${city}? Respond in a valid JSON format.`;
-
-    // --- ENUM ADDED TO SCHEMA ---
-    // We are now telling the AI that the 'conditions' field MUST be one of the values in this list.
-    // This ensures we always get a value that matches one of our icons.
     const schema = {
       type: "OBJECT",
       properties: {
@@ -69,123 +182,73 @@ const App = () => {
             city: { type: "STRING" },
             temperature: { type: "NUMBER" },
             temperatureUnit: { type: "STRING", enum: ["Celsius", "Fahrenheit"] },
-            conditions: { 
-              type: "STRING", 
-              description: "A brief description of the weather.",
-              enum: ["Sunny", "Cloudy", "Partly Cloudy", "Rain", "Snow", "Thunderstorm", "Windy"]
-            },
+            conditions: { type: "STRING", enum: ["Sunny", "Cloudy", "Partly Cloudy", "Rain", "Snow", "Thunderstorm", "Windy"] },
           },
           required: ["city", "temperature", "temperatureUnit", "conditions"],
         },
         dailyForecast: {
           type: "ARRAY",
-          description: "An array of 5 objects, each representing the forecast for a day.",
           items: {
             type: "OBJECT",
             properties: {
-              day: { type: "STRING", description: "The day of the week (e.g., 'Monday')." },
-              high: { type: "NUMBER", description: "The high temperature for the day." },
-              low: { type: "NUMBER", description: "The low temperature for the day." },
-              conditions: { 
-                type: "STRING", 
-                description: "A brief description of the day's weather.",
-                enum: ["Sunny", "Cloudy", "Partly Cloudy", "Rain", "Snow", "Thunderstorm", "Windy"]
-              },
+              day: { type: "STRING" },
+              high: { type: "NUMBER" },
+              low: { type: "NUMBER" },
+              conditions: { type: "STRING", enum: ["Sunny", "Cloudy", "Partly Cloudy", "Rain", "Snow", "Thunderstorm", "Windy"] },
             },
             required: ["day", "high", "low", "conditions"],
           },
         },
+        clothingSuggestion: { type: "STRING" },
+        activitySuggestion: { type: "STRING" },
       },
-      required: ["currentWeather", "dailyForecast"],
+      required: ["currentWeather", "dailyForecast", "clothingSuggestion", "activitySuggestion"],
     };
 
-    const payload = {
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: schema,
-      },
-    };
+    const payload = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: schema } };
 
     try {
+      if (!apiKey) throw new Error("API Key is missing.");
       const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      
+      const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
-      
       const result = await response.json();
       const jsonResponseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!jsonResponseText) throw new Error("Invalid response structure from AI.");
-      
       const parsedForecast = JSON.parse(jsonResponseText);
-      // console.log('Parsed Forecast:', parsedForecast); // Great for debugging!
       setForecast(parsedForecast);
-
+      if (typeof location === 'string') {
+        setCity(location);
+      } else {
+        setCity(parsedForecast.currentWeather.city);
+      }
     } catch (err) {
       console.error(err);
       setError('Could not fetch the forecast. The Genie is busy! Please try again.');
     } finally {
       setLoading(false);
+      setTimeout(() => setIsCooldown(false), 2000);
     }
   };
+  
+  const backgroundClass = getBackgroundStyle(forecast?.currentWeather?.conditions);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center font-sans p-4">
+    <div className={`min-h-screen bg-gradient-to-br ${backgroundClass} flex items-center justify-center font-sans p-4 transition-all duration-1000`}>
       <div className="w-full max-w-lg bg-white/30 backdrop-blur-md rounded-xl shadow-2xl p-8 space-y-6">
         <h1 className="text-4xl font-bold text-white text-center tracking-wider">Genie Weather</h1>
 
-        <form onSubmit={handleGetForecast} className="flex gap-2">
-          <input
-            type="text"
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            placeholder="Enter city name..."
-            className="flex-grow p-3 rounded-lg border-2 border-transparent focus:border-white focus:ring-0 bg-white/50 text-white placeholder-gray-200 transition duration-300 focus:outline-none"
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className="bg-white text-blue-500 font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-blue-100 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Thinking...' : 'Get Forecast'}
-          </button>
-        </form>
+        <SearchBar city={city} setCity={setCity} handleGetForecast={handleGetForecast} loading={loading} isCooldown={isCooldown} />
 
         {error && <div className="bg-red-500/50 text-white p-3 rounded-lg text-center">{error}</div>}
 
+        {loading && <LoadingSpinner />}
+
         {forecast && (
           <div className="animate-fade-in space-y-6">
-            <div className="bg-white/30 backdrop-blur-md rounded-xl shadow-inner p-6 flex flex-col items-center text-white space-y-4">
-              <h2 className="text-3xl font-semibold">{forecast.currentWeather.city}</h2>
-              <div className="flex items-center gap-4">
-                {getWeatherIcon(forecast.currentWeather.conditions)}
-                <p className="text-6xl font-bold">
-                  {forecast.currentWeather.temperature}°{forecast.currentWeather.temperatureUnit === 'Celsius' ? 'C' : 'F'}
-                </p>
-              </div>
-              <p className="text-2xl capitalize">{forecast.currentWeather.conditions}</p>
-            </div>
-
-            <div className="bg-white/30 backdrop-blur-md rounded-xl shadow-inner p-6 space-y-4">
-              <h3 className="text-2xl font-bold text-white text-center">5-Day Forecast</h3>
-              <div className="flex justify-between items-center text-white overflow-x-auto gap-2">
-                {forecast.dailyForecast.map((day) => (
-                  <div key={day.day} className="flex-shrink-0 flex flex-col items-center bg-white/20 p-3 rounded-lg w-24">
-                    <p className="font-bold">{day.day.substring(0, 3)}</p>
-                    <div className="my-2">{getWeatherIcon(day.conditions, "h-12 w-12")}</div>
-                    <div className="text-center">
-                      <p className="font-semibold">{day.high}°</p>
-                      <p className="opacity-70">{day.low}°</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
+            <CurrentWeather data={forecast.currentWeather} />
+            <DailyForecast data={forecast.dailyForecast} />
+            <Recommendations data={forecast} />
             <p className="text-xs text-white/70 text-center pt-2">
               Weather data powered by Generative AI. Forecast may be approximate.
             </p>
