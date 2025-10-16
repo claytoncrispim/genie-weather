@@ -38,7 +38,7 @@ To run this project locally, follow these steps:
 
 1. Clone the repository:
 ```bash
-    git clone [https://github.com/claytoncrispim/genie-weather.git](https://github.com/claytoncrispim/genie-weather.git)
+    git clone https://github.com/claytoncrispim/genie-weather.git
 ```
 ```bash    
     cd genie-weather
