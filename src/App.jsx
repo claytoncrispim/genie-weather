@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { selectBestGeminiModel } from './utils/selectGeminiModel';
 
 // --- COMPONENT 1: WeatherIcon ---
 const WeatherIcon = ({ condition, size = "h-24 w-24" }) => {
@@ -46,12 +47,13 @@ const SearchBar = ({ city, setCity, handleGetForecast, loading, isCooldown }) =>
       value={city}
       onChange={(e) => setCity(e.target.value)}
       placeholder="Enter city name..."
-      className="flex-grow p-3 rounded-lg border-2 border-transparent focus:border-white focus:ring-0 bg-white/50 text-white placeholder-gray-200 transition duration-300 focus:outline-none"
+      className="flex-grow p-3 rounded-lg border-2 border-transparent focus:border-white focus:ring-0 bg-white/30 text-white placeholder-gray-200 transition duration-300 focus:outline-none"
     />
+    
     <button
       type="submit"
       disabled={loading || isCooldown}
-      className="bg-white text-blue-500 font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-blue-100 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+      className="bg-white/70 text-blue-500 font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-blue-100 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {loading ? 'Thinking...' : 'Get Forecast'}
     </button>
@@ -60,7 +62,7 @@ const SearchBar = ({ city, setCity, handleGetForecast, loading, isCooldown }) =>
 
 // --- COMPONENT 4: CurrentWeather ---
 const CurrentWeather = ({ data }) => (
-  <div className="bg-white/30 backdrop-blur-md rounded-xl shadow-inner p-6 flex flex-col items-center text-white space-y-4">
+  <div className="bg-white/20 backdrop-blur-md rounded-xl shadow-inner p-6 flex flex-col items-center text-white space-y-4">
     <h2 className="text-3xl font-semibold">{data.city}</h2>
     <div className="flex items-center gap-4">
       <WeatherIcon condition={data.conditions} />
@@ -74,7 +76,7 @@ const CurrentWeather = ({ data }) => (
 
 // --- COMPONENT 5: DailyForecast ---
 const DailyForecast = ({ data }) => (
-  <div className="bg-white/30 backdrop-blur-md rounded-xl shadow-inner p-6 space-y-4">
+  <div className="bg-white/20 backdrop-blur-md rounded-xl shadow-inner p-6 space-y-4">
     <h3 className="text-2xl font-bold text-white text-center">5-Day Forecast</h3>
     <div className="flex justify-between items-center text-white overflow-x-auto gap-2">
       {data.map((day) => (
@@ -93,7 +95,7 @@ const DailyForecast = ({ data }) => (
 
 // --- COMPONENT 6: Recommendations ---
 const Recommendations = ({ data }) => (
-    <div className="bg-white/30 backdrop-blur-md rounded-xl shadow-inner p-6 space-y-4 text-white">
+    <div className="bg-white/20 backdrop-blur-md rounded-xl shadow-inner p-6 space-y-4 text-white">
         <h3 className="text-2xl font-bold text-center">Genie's Advice</h3>
         <div className="space-y-3">
             <div>
@@ -128,6 +130,8 @@ const getBackgroundStyle = (condition) => {
 const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
 const App = () => {
+  const [model, setModel] = useState(localStorage.getItem('overrideGeminiModel') || null);
+  const [autoModel, setAutoModel] = useState(null);
   const [city, setCity] = useState('');
   const [forecast, setForecast] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -156,6 +160,14 @@ const App = () => {
       localStorage.setItem('genieWeatherLastCity', forecast.currentWeather.city);
     }
   }, [forecast]);
+
+  useEffect(() => {
+    (async () => {
+      if (!apiKey) return;
+      const best = await selectBestGeminiModel(apiKey);
+      setAutoModel(best);
+    })();
+  }, []);
 
   const handleGetForecast = async (location) => {
     let prompt;
@@ -205,18 +217,45 @@ const App = () => {
       required: ["currentWeather", "dailyForecast", "clothingSuggestion", "activitySuggestion"],
     };
 
-    const payload = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: schema } };
+    // const payload = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: schema } };
 
     try {
       if (!apiKey) throw new Error("API Key is missing.");
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-      const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+
+      const selectedModel = model || autoModel || 'gemini-2.5-pro';
+      console.log("Using Gemini model:", selectedModel);
+
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`;
+
+      // Constructing the request payload
+      const payload = { 
+        contents: [{ parts: [{ text: prompt }] }], 
+        generationConfig: { 
+          responseMimeType: "application/json", 
+          responseSchema: schema 
+        } 
+      };
+
+      const response = await fetch(apiUrl, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify(payload) 
+      });
+
       if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
       const result = await response.json();
-      const jsonResponseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+      // Updated Response Handling
+      const candidate = result.candidates?.[0];
+      const contentPart = candidate?.content?.parts?.[0];
+      const jsonResponseText =
+        contentPart?.text ||
+        contentPart?.functionCall?.args ||
+        JSON.stringify(contentPart || {});
       if (!jsonResponseText) throw new Error("Invalid response structure from AI.");
+      
       const parsedForecast = JSON.parse(jsonResponseText);
       setForecast(parsedForecast);
+      
       if (typeof location === 'string') {
         setCity(location);
       } else {
@@ -237,6 +276,56 @@ const App = () => {
     <div className={`min-h-screen bg-gradient-to-br ${backgroundClass} flex items-center justify-center font-sans p-4 transition-all duration-1000`}>
       <div className="w-full max-w-lg bg-white/30 backdrop-blur-md rounded-xl shadow-2xl p-8 space-y-6">
         <h1 className="text-4xl font-bold text-white text-center tracking-wider">Genie Weather</h1>
+        <p className="text-sm text-white/70 text-center">Get the latest weather updates powered by AI.</p>
+        {/* Model selector dropdown */}
+        <div className="flex justify-center items-center gap-2 text-white text-sm">
+          <label htmlFor="model" className="opacity-80">Model:</label>
+          <select
+            id="model"
+            value={model || autoModel || ""}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === "auto") {
+                setModel(null);
+                localStorage.removeItem("overrideGeminiModel");
+              } else {
+                setModel(value);
+                localStorage.setItem("overrideGeminiModel", value);
+              }
+            }}
+            // By default: white text  - When listing options: blue text for selected
+            className="
+              appearance-none
+              bg-white/20 hover:bg-white/30
+              text-white
+              border border-white/40
+              rounded-lg px-3 py-1
+              focus:outline-none focus:ring-2 focus:ring-white/60
+              transition duration-200
+              backdrop-blur-md
+            "
+            style={{
+              WebkitAppearance: 'none',
+              MozAppearance: 'none',
+            }}
+          >
+            <option value="auto" className="text-blue-600 bg-white">Auto ({autoModel || "detecting..."})</option>
+            <option value="gemini-2.5-flash" className="text-blue-600 bg-white">Gemini Flash</option>
+            <option value="gemini-2.5-flash-lite" className="text-blue-600 bg-white">Gemini Flash Lite</option>
+            <option value="gemini-2.5-pro" className="text-blue-600 bg-white">Gemini Pro</option>
+          </select>
+        </div>
+
+        {/* <button
+          onClick={() => {
+            localStorage.removeItem("bestGeminiModel");
+            setAutoModel(null);
+            alert("Auto-model cache cleared. It will re-detect next time.");
+          }}
+          className="text-xs text-white/70 underline ml-2 text-center"
+        >
+          Reset Auto-Detect
+        </button> */}
 
         <SearchBar city={city} setCity={setCity} handleGetForecast={handleGetForecast} loading={loading} isCooldown={isCooldown} />
 
