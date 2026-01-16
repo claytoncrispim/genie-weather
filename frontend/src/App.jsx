@@ -1,6 +1,109 @@
 import { useState, useEffect } from 'react';
-import { selectBestGeminiModel } from './utils/selectGeminiModel';
 
+// --- CONFIGURATION ---
+// Base URL for backend rendering service
+const RENDER_BACKEND_URL =
+  import.meta.env.VITE_RENDER_BACKEND_URL || 'http://localhost:3000';
+
+const API_BASE_URL = RENDER_BACKEND_URL;
+
+
+// --- HELPERS ---
+// --- RETRY HELPER FUNCTION ---
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function fetchWithRetry(
+    url, 
+    options = {}, 
+    { retries = 2, delay = 4000 } = {}
+) {
+    let lastError;
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+            const res = await fetch(url, options);
+
+            // If it's a "cold backend" style status, retry a couple of times
+            if (!res.ok && [502, 503, 504].includes(res.status) && attempt < retries) {
+                console.warn(
+                  `Request to ${url} failed with status ${res.status}. Retrying in ${delay}ms... (Attempt ${
+                      attempt + 1
+                  } of ${retries + 1})`
+                );
+                await sleep(delay);
+                continue;
+            }
+
+            // Return the response *even if* it's not ok.
+            // callGemini / other callers will inspect res.ok / res.status.
+            return res;
+            } catch (err) {
+              lastError = err;
+              console.warn(`Request to ${url} failed on attempt ${attempt}:`, err);
+
+              if (attempt < retries) {
+                  await sleep(delay);
+                  continue;
+            }
+
+            // All retries exhausted → propagate network error
+            throw lastError;
+            }
+        }
+
+        // Should never reach here, but just in case:
+        throw lastError || new Error("Unknown error in fetchWithRetry");
+  }
+
+// --- GEMINI API CALL FUNCTION ---
+// Helper function for Gemini initialization
+const callGemini = async (prompt, model) => {
+    let response;
+    try {
+        response = await fetchWithRetry(
+            `${API_BASE_URL}/api/forecast`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt, model }),
+        });
+    } catch (networkErr) {
+        // Network, CORS, or backend not runnning error
+        const err = new Error("NETWORK_ERROR");
+        err.cause = networkErr;
+        throw err;
+    }
+
+    let data;
+    try {
+        data = await response.json();
+    } catch (parseErr) {
+        const err = new Error("INVALID_JSON_FROM_SERVER");
+        err.status = response.status;
+        err.cause = parseErr;
+        throw err;
+    }
+
+    if (!response.ok) {
+        // Backend returned an error status
+        const message =
+            data?.error ||
+            `Server returned an error (${response.status}). Please try again`;
+
+        const err = new Error(message);
+        err.status = response.status;
+        throw err;
+    }
+
+    // The backend now returns structured JSON, so we return it directly
+    if (!data || typeof data !== "object") {
+        throw new Error("UNEXPECTED_RESPONSE_SHAPE");
+    }
+
+    return data;
+}
+
+
+// *** UI COMPONENTS ***
 // --- COMPONENT 1: WeatherIcon ---
 const WeatherIcon = ({ condition, size = "h-24 w-24" }) => {
     const icons = {
@@ -185,81 +288,16 @@ const App = () => {
     setError(null);
     setForecast(null);
 
-    const schema = {
-      type: "OBJECT",
-      properties: {
-        currentWeather: {
-          type: "OBJECT",
-          properties: {
-            city: { type: "STRING" },
-            temperature: { type: "NUMBER" },
-            temperatureUnit: { type: "STRING", enum: ["Celsius", "Fahrenheit"] },
-            conditions: { type: "STRING", enum: ["Sunny", "Cloudy", "Partly Cloudy", "Rain", "Snow", "Thunderstorm", "Windy"] },
-          },
-          required: ["city", "temperature", "temperatureUnit", "conditions"],
-        },
-        dailyForecast: {
-          type: "ARRAY",
-          items: {
-            type: "OBJECT",
-            properties: {
-              day: { type: "STRING" },
-              high: { type: "NUMBER" },
-              low: { type: "NUMBER" },
-              conditions: { type: "STRING", enum: ["Sunny", "Cloudy", "Partly Cloudy", "Rain", "Snow", "Thunderstorm", "Windy"] },
-            },
-            required: ["day", "high", "low", "conditions"],
-          },
-        },
-        clothingSuggestion: { type: "STRING" },
-        activitySuggestion: { type: "STRING" },
-      },
-      required: ["currentWeather", "dailyForecast", "clothingSuggestion", "activitySuggestion"],
-    };
-
-    // const payload = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseMimeType: "application/json", responseSchema: schema } };
 
     try {
-      if (!apiKey) throw new Error("API Key is missing.");
-
-      const selectedModel = model || autoModel || 'gemini-2.5-pro';
-      console.log("Using Gemini model:", selectedModel);
-
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${apiKey}`;
-
-      // Constructing the request payload
-      const payload = { 
-        contents: [{ parts: [{ text: prompt }] }], 
-        generationConfig: { 
-          responseMimeType: "application/json", 
-          responseSchema: schema 
-        } 
-      };
-
-      const response = await fetch(apiUrl, { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify(payload) 
-      });
-
-      if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
-      const result = await response.json();
-      // Updated Response Handling
-      const candidate = result.candidates?.[0];
-      const contentPart = candidate?.content?.parts?.[0];
-      const jsonResponseText =
-        contentPart?.text ||
-        contentPart?.functionCall?.args ||
-        JSON.stringify(contentPart || {});
-      if (!jsonResponseText) throw new Error("Invalid response structure from AI.");
-      
-      const parsedForecast = JSON.parse(jsonResponseText);
-      setForecast(parsedForecast);
-      
+      const selectedModel = model === 'auto' ? undefined : model;
+      // Call Gemini via backend (API key stays on the server)
+      const backendResponse = await callGemini(prompt, selectedModel);
+      setForecast(backendResponse);
       if (typeof location === 'string') {
         setCity(location);
       } else {
-        setCity(parsedForecast.currentWeather.city);
+        setCity(backendResponse.currentWeather.city);
       }
     } catch (err) {
       console.error(err);
