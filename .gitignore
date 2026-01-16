@@ -1,8 +1,10 @@
 # Dependencies
+node_modules/
 **/node_modules/
 
 # Vite build output
-/dist
+dist/
+**/dist/
 
 # Environment variables
 .env.local
@@ -11,6 +13,7 @@
 .env.*
 !.env.example
 !.env.production
+**/.env\
 
 # IDE and OS files
 .DS_Store
