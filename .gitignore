@@ -13,7 +13,7 @@ dist/
 .env.*
 !.env.example
 !.env.production
-**/.env\
+**/.env
 
 # IDE and OS files
 .DS_Store
