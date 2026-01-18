@@ -21,6 +21,7 @@ concurrency:
   group: "pages"
   cancel-in-progress: false
 
+
 jobs:
   # Build job
   build:
@@ -28,11 +29,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20 # You can change this to your Node.js version
-          cache: 'npm'
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
       - name: Install dependencies
         working-directory: frontend
         run: npm ci
@@ -43,10 +47,13 @@ jobs:
         env:
           VITE_RENDER_BACKEND_URL: ${{ vars.VITE_RENDER_BACKEND_URL }}
 
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./frontend/dist
+          path: frontend/dist
  
           
   # Deployment job
