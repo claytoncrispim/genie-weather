@@ -19,5 +19,7 @@ dist/
 .DS_Store
 .vscode/
 
-# Cache directories
-printf "\n# Tooling caches\n**/.cache/\n**/.vite/\n**/.npm/\n" >> .gitignore
+# Tooling caches
+**/.cache/
+**/.vite/
+**/.npm/
