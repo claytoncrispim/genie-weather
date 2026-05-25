@@ -181,6 +181,11 @@ app.get("/_whoami", (req, res) => {
   res.json({ ok: true, file: "backend/server.js" });
 });
 
+// Health check endpoint to verify if the server is running
+app.get("/_health", (req, res) => {
+  res.json({ ok: true, timestamp: new Date().toISOString() });
+});
+
 // // Log registered routes
 // console.log("✅ Registered routes:");
 // app._router.stack
