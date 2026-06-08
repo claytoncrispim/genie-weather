@@ -213,17 +213,14 @@ app.get("/_health", (req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString() });
 });
 
-// // Log registered routes
-// console.log("✅ Registered routes:");
-// app._router.stack
-//   .filter(r => r.route)
-//   .forEach(r => {
-//     const methods = Object.keys(r.route.methods).join(",").toUpperCase();
-//     console.log(`${methods} ${r.route.path}`);
-//   });
+// Only call app.listen if NOT running in a serverless environment (like Vercel)
+if (process.env.NODE_ENV !== 'production') {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Backend server running on port ${PORT}`);
+    console.log(`✅ Running backend/server.js from: ${process.cwd()}`);
+  });
+}
 
-
-app.listen(PORT, () => {
-  console.log(`Backend server running on port ${PORT}`);
-  console.log(`✅ Running backend/server.js from: ${process.cwd()}`);
-});
+// Crucial for Vercel serverless integration
+module.exports = app;
