@@ -198,5 +198,5 @@ app.get("/_health", (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Backend server running on port ${PORT}`);
-  console.log("✅ Running backend/server.js from:", process.cwd());
+  console.log(`✅ Running backend/server.js from: ${process.cwd()}`);
 });
