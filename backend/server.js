@@ -92,29 +92,32 @@ function safeModel(input) {
 
 const app = express();
 
-const allowedOrigins = [
-  'http://localhost:5173', // Local Dev
-  'https://genie-weather-frontend.vercel.app' // New Vercel Production Frontend
-];
-
-app.use(cors());
-
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (like mobile apps or curl requests)
+// Dynamically mirror the origin if it matches local development or any Vercel domain
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow server-to-server or tools like Postman (no origin)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
+    
+    const isLocalhost = origin.startsWith('http://localhost:');
+    const isVercel = origin.endsWith('.vercel.app');
+    
+    if (isLocalhost || isVercel) {
+      return callback(null, true);
+    } else {
+      return callback(new Error('Not allowed by CORS'), false);
     }
-    return callback(null, true);
   },
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  optionsSuccessStatus: 200 // Explicitly forces older browsers/proxies to process the preflight safely
+};
+
+// Apply CORS options globally
+app.use(cors(corsOptions));
 
 // Explicitly handle preflight requests across all endpoints
-app.options('*', cors());
+app.options('*', cors(corsOptions));
 
 app.use(express.json({ limit: "1mb" }));
 
