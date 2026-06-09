@@ -90,9 +90,10 @@ function safeModel(input) {
   return "gemini-2.5-flash";
 }
 
+const express = require('express');
+const cors = require('cors');
 const app = express();
 
-const cors = require('cors');
 
 // Dynamically mirror the origin if it matches local development or any Vercel domain
 const corsOptions = {
