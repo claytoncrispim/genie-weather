@@ -213,5 +213,5 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
-// Crucial for Vercel serverless integration
-module.exports = app;
+// ES Module export syntax instead of CommonJS
+export default app;
