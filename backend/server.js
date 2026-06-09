@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import express from "express";
-import cors from "cors";
+// import cors from "cors";
 
 
 
@@ -91,24 +91,24 @@ function safeModel(input) {
 }
 
 const express = require('express');
-const cors = require('cors');
+// const cors = require('cors');
 const app = express();
 
 
 // Dynamically mirror the origin if it matches local development or any Vercel domain
-const corsOptions = {
-  origin: 'https://genie-weather-frontend.vercel.app', // Allow your Vercel frontend domain
-  methods: ['GET', 'POST', 'PUT','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-  optionsSuccessStatus: 200, // Vital for forcing Vercel serverless functions to handle the OPTIONS request cleanly
-};
+// const corsOptions = {
+//   origin: 'https://genie-weather-frontend.vercel.app', // Allow your Vercel frontend domain
+//   methods: ['GET', 'POST', 'PUT','DELETE','OPTIONS'],
+//   allowedHeaders: ['Content-Type', 'Authorization'],
+//   credentials: true,
+//   optionsSuccessStatus: 200, // Vital for forcing Vercel serverless functions to handle the OPTIONS request cleanly
+// };
 
-// Apply CORS options globally
-app.use(cors(corsOptions));
+// // Apply CORS options globally
+// app.use(cors(corsOptions));
 
-// Explicitly handle preflight requests across all endpoints
-app.options('*', cors(corsOptions));
+// // Explicitly handle preflight requests across all endpoints
+// app.options('*', cors(corsOptions));
 
 app.use(express.json({ limit: "1mb" }));
 
